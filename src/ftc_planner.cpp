@@ -269,12 +269,12 @@ namespace ftc_local_planner
         break;
         case POST_ROTATE:
         {
-            if (time_in_current_state() > config.goal_timeout)
+            if (time_in_current_state() > config.goal_timeout && abs(angle_error) * (180.0 / M_PI) > config.max_goal_angle_error)
             {
                 ROS_WARN_STREAM("FTCLocalPlannerROS: Could not reach goal rotation. config.goal_timeout (" << config.goal_timeout << ") reached");
                 return FINISHED;
             }
-            if (abs(angle_error) * (180.0 / M_PI) < config.max_goal_angle_error)
+            if (abs(angle_error) * (180.0 / M_PI) <= config.target_goal_angle_error)
             {
                 ROS_INFO_STREAM("FTCLocalPlannerROS: POST_ROTATE finished.");
                 return FINISHED;
@@ -451,13 +451,25 @@ namespace ftc_local_planner
         {
             i_lat_error = -config.ki_lat_max;
         }
-        if (i_angle_error > config.ki_ang_max)
-        {
-            i_angle_error = config.ki_ang_max;
+        if (current_state == FOLLOWING) {
+            if (i_angle_error > config.ki_ang_max)
+            {
+                i_angle_error = config.ki_ang_max;
+            }
+            else if (i_angle_error < -config.ki_ang_max)
+            {
+                i_angle_error = -config.ki_ang_max;
+            }
         }
-        else if (i_angle_error < -config.ki_ang_max)
-        {
-            i_angle_error = -config.ki_ang_max;
+        else {
+            if (i_angle_error > config.ki_ang_max_rotate)
+            {
+                i_angle_error = config.ki_ang_max_rotate;
+            }
+            else if (i_angle_error < -config.ki_ang_max_rotate)
+            {
+                i_angle_error = -config.ki_ang_max_rotate;
+            }
         }
 
         double d_lat = (lat_error - last_lat_error) / dt;
@@ -519,7 +531,7 @@ namespace ftc_local_planner
         }
         else
         {
-            double ang_speed = angle_error * config.kp_ang + i_angle_error * config.ki_ang + d_angle * config.kd_ang;
+            double ang_speed = angle_error * config.kp_ang_rotate + i_angle_error * config.ki_ang_rotate + d_angle * config.kd_ang_rotate;
             if (ang_speed > config.max_cmd_vel_ang)
             {
                 ang_speed = config.max_cmd_vel_ang;
